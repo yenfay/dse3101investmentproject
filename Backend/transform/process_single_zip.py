@@ -65,7 +65,7 @@ def process_single_zip(zip_path: Path, temp_dir: Path) -> pd.DataFrame:
 
     # Merge coverpage
     submission = submission.merge(
-        coverpage[["ACCESSION_NUMBER", "FILINGMANAGER_NAME", "ISAMENDMENT"]],
+        coverpage[["ACCESSION_NUMBER", "FILINGMANAGER_NAME"]],
         on="ACCESSION_NUMBER",
         how="left"
     )
