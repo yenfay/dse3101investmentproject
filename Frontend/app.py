@@ -8,21 +8,23 @@ st.set_page_config(
     layout="wide"
 )
 
-st.title("Beginner Dashboard")
-c1, c2, c3, c4 = st.columns([0.7, 0.12, 0.12, 0.11])
-
+# title and new backtest button layout
+c_title, c_backtest = st.columns([9, 1], vertical_alignment = "middle")
+with c_title: 
+    st.title("Beginner Dashboard")
+with c_backtest: 
+    new_backtest_button()
+    
+# date layout
+c1, c2, c3 = st.columns([0.8, 0.1, 0.1])
 with c1: 
     st.write("")
-    
 with c2:
     from_date = st.date_input("From:", key="from_date")
-
 with c3:
     to_date = st.date_input("To:", key="to_date")
-    
-with c4: 
-    new_backtest_button()
 
+# configure left column for graph and right column for table
 col_left, col_right = st.columns([6, 4])
 
 with col_left:
