@@ -9,7 +9,7 @@ st.set_page_config(
 )
 
 # title and new backtest button layout
-c_title, c_backtest = st.columns([9, 1], vertical_alignment = "middle")
+c_title, c_backtest = st.columns([9, 1], vertical_alignment = "center")
 with c_title: 
     st.title("Beginner Dashboard")
 with c_backtest: 
