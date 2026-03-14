@@ -1,3 +1,7 @@
 
 Datasets/13F_zip_files/
 temp
+
+venv/
+__pycache__/
+*.pyc
