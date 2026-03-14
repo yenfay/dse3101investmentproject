@@ -43,10 +43,10 @@ with left_col:
         st.markdown("<h3 style='margin:0; color: #2e7d32;'>Top Increases</h3>", unsafe_allow_html=True)
         
         h1, h2, h3, h4 = st.columns([1, 1, 1, 1])
-        h1.markdown("<p style='color:white; font-weight:bold; text-align:center; margin:0;'>Rank</p>", unsafe_allow_html=True)
-        h2.markdown("<p style='color:white; font-weight:bold; text-align:center; margin:0;'>Ticker</p>", unsafe_allow_html=True)
-        h3.markdown("<p style='color:white; font-weight:bold; text-align:center; margin:0;'>Change</p>", unsafe_allow_html=True)
-        h4.markdown("<p style='color:white; font-weight:bold; text-align:center; margin:0;'>% Change</p>", unsafe_allow_html=True)
+        h1.markdown("<p style='color:black; font-weight:bold; text-align:center; margin:0;'>Rank</p>", unsafe_allow_html=True)
+        h2.markdown("<p style='color:black; font-weight:bold; text-align:center; margin:0;'>Ticker</p>", unsafe_allow_html=True)
+        h3.markdown("<p style='color:black; font-weight:bold; text-align:center; margin:0;'>Change</p>", unsafe_allow_html=True)
+        h4.markdown("<p style='color:black; font-weight:bold; text-align:center; margin:0;'>% Change</p>", unsafe_allow_html=True)
         
         st.markdown("<hr style='margin:10px 0; border:0.5px solid #333;'>", unsafe_allow_html=True)
 
@@ -78,7 +78,7 @@ with right_col:
         st.markdown("<h3 style='margin:0; color: #d32f2f;'>Top Decreases</h3>", unsafe_allow_html=True)
         
         h1, h2, h3, h4 = st.columns([1, 1, 1, 1])
-        h_style = "color:white; font-weight:bold; text-align:center; margin:0;"
+        h_style = "color:black; font-weight:bold; text-align:center; margin:0;"
         h1.markdown(f"<p style='{h_style}'>Rank</p>", unsafe_allow_html=True)
         h2.markdown(f"<p style='{h_style}'>Ticker</p>", unsafe_allow_html=True)
         h3.markdown(f"<p style='{h_style}'>Change</p>", unsafe_allow_html=True)
@@ -164,7 +164,7 @@ with st.container(border=True):
             is_pos = row['% Change'] >= 0
             perf_color = "#2e7d32" if is_pos else "#d32f2f"
             arrow = "▲ +" if is_pos else "▼ "
-            base_s = "color: white; text-align: center; margin: 0; font-size: 14px; line-height: 1.2;"
+            base_s = "color: black; text-align: center; margin: 0; font-size: 14px; line-height: 1.2;"
             perf_s = f"color: {perf_color}; font-weight: 600; text-align: center; margin: 0; font-size: 14px; line-height: 1.2;"
 
             r[0].markdown(f"<p style='{base_s} font-weight:bold;'>{row['Ticker']}</p>", unsafe_allow_html=True)
