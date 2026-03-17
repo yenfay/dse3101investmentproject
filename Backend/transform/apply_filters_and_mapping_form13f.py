@@ -35,10 +35,10 @@ def build_and_save_cusip_ticker_map(clean_dir: Path, filtered_dir: Path, openfig
     cusip_ticker_df.to_parquet(output_path, index=False)
     print(f"Saved cusip->ticker map to: {output_path}")
 
-    cusip_ticker_df.to_excel(filtered_dir / "cusip_ticker_map.xlsx", index=False)
-    print("save to excel for manual inspection")
+    # cusip_ticker_df.to_excel(filtered_dir / "cusip_ticker_map.xlsx", index=False)
+    # print("save to excel for manual inspection")
 
-    return output_path
+    # return output_path
 
 
 # ==========================================================
@@ -58,7 +58,7 @@ def filter_and_map_single_parquet(parquet_path: Path, filtered_and_mapped_dir: P
 
     # Merge pre-built cusip->ticker map (no API call)
     # Keep only equity-like securities in cusip ticker mapper. 
-    keep_types = {"Common Stock"}  # adjust based on your research scope
+    keep_types = {"Common Stock"} 
 
     cusip_ticker_clean = cusip_ticker_df[
         cusip_ticker_df["security_type"].isin(keep_types)
