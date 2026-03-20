@@ -178,11 +178,7 @@ def main(userinput_start_date,
     # To track time taken to run main()
     start = time.perf_counter()
 
-    # 1. Get final form13f files and final price files (filtered to contain only top 20 institutions)
-    # get_final_files(TOP_N_INSTITUTIONS, FORM13F_FOLDER_PATH, PRICES_FILE_FULL, OUTPUT_FOLDER)
-    # Note: One time use. To be commented when final form13f and final prices files are obtained
-
-    # 2. run strategy
+    # 1. run strategy
     portfolio_df = run_strategy(
         holdings_file_path=HOLDINGS_FILE,
         prices_file_path=PRICES_FILE,
@@ -192,7 +188,7 @@ def main(userinput_start_date,
         lag=userinput_lag,
     )
 
-    # 3. run evaluation
+    # 2. run evaluation
     metrics_df = run_evaluation(
         portfolio_df,
         start_date=userinput_start_date,
@@ -207,6 +203,9 @@ def main(userinput_start_date,
 # Quick smoke-test  (edit paths before running)
 # ---------------------------------------------------------------------------
 if __name__ == "__main__":
+    # Inital step. Get final form13f files and final price files (filtered to contain only top 20 institutions)
+    # get_final_files(TOP_N_INSTITUTIONS, FORM13F_FOLDER_PATH, PRICES_FILE_FULL, OUTPUT_FOLDER)
+    # Note: One time use. To be commented when final form13f and final prices files are obtained
 
     # Change user inputs here:
     userinput_start_date = '2022-04-19' 
