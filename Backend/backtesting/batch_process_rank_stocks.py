@@ -200,7 +200,7 @@ def main(userinput_start_date,
 
     return portfolio_df, metrics_df
 # ---------------------------------------------------------------------------
-# Quick smoke-test  (edit paths before running)
+# RUN
 # ---------------------------------------------------------------------------
 if __name__ == "__main__":
     # Inital step. Get final form13f files and final price files (filtered to contain only top 20 institutions)
