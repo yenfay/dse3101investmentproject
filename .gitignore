@@ -1,4 +1,9 @@
-
+# Ignore raw data
 Datasets/13F_zip_files/
-temp
-test
+
+# Ignore compiled Python files
+*.pyc
+__pycache__/
+
+# Ignore parquet files
+*.parquet
