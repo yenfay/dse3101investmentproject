@@ -5,6 +5,7 @@ from components.new_backtest import new_backtest_button #for yenfay's code testi
 from components.top_20 import top_20_table #for yenfay's code testing, DO NOT OVERWRITE PLEASE!
 from datetime import date 
 import math
+from streamlit_echarts import st_echarts, JsCode
 
 # page set up and layout
 st.set_page_config(
@@ -94,13 +95,12 @@ def render_metric(label, value, kind="number"):
         unsafe_allow_html=True
     )
 
-def normalize_series(series):
-    base = series[0]
-    return [x / base for x in series]
 
-def log_transform(series):
-    base = series[0]
-    return [math.log(x / base) for x in series]
+def log_returns(series):
+    returns = [0]
+    for i in range(1, len(series)):
+        returns.append(math.log(series[i] / series[i - 1]))
+    return returns
     
 # configure left column for graph and right column for table
 col_left, col_right = st.columns([6, 4])
@@ -117,19 +117,36 @@ with col_left:
         show_benchmark = st.checkbox("Show SPY", value=True)
 
     portfolio_dates = [
-        "2024-Q1", "2024-Q2", "2024-Q3", "2024-Q4",
-        "2025-Q1", "2025-Q2", "2025-Q3", "2025-Q4"
+        "2022-Q2", "2022-Q3", "2022-Q4",
+        "2023-Q1", "2023-Q2", "2023-Q3", "2023-Q4"
     ]
 
     portfolio_values = [
-        100000, 120000, 115000, 140000,
-        160000, 180000, 175000, 200000
+        8371.937801,
+        9314.938979,
+        8577.787879,
+        8729.342859,
+        8768.148067,
+        10551.983110,
+        10834.367892
     ]
 
     spy_values = [
-        100000, 105000, 110000, 115000,
-        120000, 130000, 135000, 140000
+        384.624,
+        401.411,
+        399.312,
+        432.685,
+        440.866,
+        494.167,
+        522.047
     ]
+
+    if use_log_scale:
+        portfolio_plot = log_returns(portfolio_values)
+        spy_plot = log_returns(spy_values)
+    else:
+        portfolio_plot = portfolio_values
+        spy_plot = spy_values
 
     # To integrate with backend, replace portfolio_dates and portfolio_values with backend output:
     # portfolio_dates = backend_output["dates"]
@@ -137,72 +154,88 @@ with col_left:
     # spy_values = backend_output["spy_values"]
     
     if use_log_scale:
-        portfolio_plot = log_transform(portfolio_values)
-        spy_plot = log_transform(spy_values)
-
-        y_axis_type = "value"   # IMPORTANT: NOT "log"
-        
-        y_axis_formatter = """
-        function(value) {
-            return (value * 100).toFixed(0) + '%';
-        }
-        """
-
-        tooltip_formatter = """
-        function(params) {
-            let result = params[0].axisValue + '<br/>';
-            for (let i = 0; i < params.length; i++) {
-                let pct = (params[i].value * 100).toFixed(1);
-                result += params[i].seriesName + ': ' + pct + '%<br/>';
+        yAxis = {
+            "type": "value",
+            "axisLabel": {
+                "formatter": JsCode(
+                    "function(value) { return (value * 100).toFixed(1) + '%'; }"
+                )
             }
-            return result;
         }
-        """
     else:
-        portfolio_plot = portfolio_values
-        spy_plot = spy_values
-        y_axis_type = "value"
-        y_axis_min = None
-        area_style = {}
-        y_axis_formatter = """
-        function(value) {
-            return value.toLocaleString();
-        }
-        """
-        tooltip_formatter = """
-        function(params) {
-            let result = params[0].axisValue + '<br/>';
-            for (let i = 0; i < params.length; i++) {
-                result += params[i].seriesName + ': ' + params[i].value.toLocaleString() + '<br/>';
+        yAxis = [
+            {
+                "type": "value",
+                "name": "Portfolio ($)",
+                "position": "left",
+                "axisLabel": {
+                    "formatter": JsCode(
+                        "function(value) { return value.toLocaleString(); }"
+                    )
+                }
+            },
+            {
+                "type": "value",
+                "name": "SPY",
+                "position": "right",
+                "axisLabel": {
+                    "formatter": JsCode(
+                        "function(value) { return value.toLocaleString(); }"
+                    )
+                }
             }
-            return result;
-        }
-        """
+        ]
     portfolio_area = {"opacity": 0.22}
-    spy_area = {"opacity": 0.32}
+    spy_area = {"opacity": 0.42}
 
-    series = [
-        {
-            "name": "Portfolio",
-            "type": "line",
-            "smooth": False,
-            "symbol": "circle",
-            "symbolSize": 8,
-            "data": portfolio_plot,
-            "areaStyle": portfolio_area
-        }
-    ]
+    if use_log_scale:
+        series = [
+            {
+                "name": "Portfolio",
+                "type": "line",
+                "smooth": False,
+                "symbol": "circle",
+                "symbolSize": 8,
+                "data": portfolio_plot,
+                "areaStyle": {"opacity": 0.22}
+            }
+        ]
 
-    if show_benchmark:
-        series.append({
-            "name": "SPY",
-            "type": "line",
-            "smooth": False,
-            "symbol": "circle",
-            "symbolSize": 7,
-            "data": spy_plot,
-            "areaStyle": spy_area
-        })
+        if show_benchmark:
+            series.append({
+                "name": "SPY",
+                "type": "line",
+                "smooth": False,
+                "symbol": "circle",
+                "symbolSize": 7,
+                "data": spy_plot,
+                "areaStyle": {"opacity": 0.42}
+            })
+    else:
+        series = [
+            {
+                "name": "Portfolio",
+                "type": "line",
+                "yAxisIndex": 0,
+                "smooth": False,
+                "symbol": "circle",
+                "symbolSize": 8,
+                "data": portfolio_plot,
+                "areaStyle": {"opacity": 0.22}
+            }
+        ]
+
+        if show_benchmark:
+            series.append({
+                "name": "SPY",
+                "type": "line",
+                "yAxisIndex": 1,
+                "smooth": False,
+                "symbol": "circle",
+                "symbolSize": 7,
+                "data": spy_plot,
+                "areaStyle": {"opacity": 0.42}
+            })
 
     chart_option = {
         "title": {
@@ -232,7 +265,7 @@ with col_left:
             "boundaryGap": False,
             "data": portfolio_dates
         },
-        "yAxis": {"type": "value"},
+        "yAxis": yAxis,
         "dataZoom": [
             {"type": "inside"},
             {"type": "slider"}
@@ -243,11 +276,11 @@ with col_left:
     st_echarts(chart_option, height="450px")
 
     metrics = [
-        ("CAGR", 46.7, "percent"),
-        ("Sharpe Ratio", 1.13, "number"),
-        ("Max Drawdown", -12.3, "percent"),
-        ("Volatility", 17.8, "percent"),
-        ("Total Return", None, "percent"),
+        ("CAGR", 6.37, "percent"),
+        ("Sharpe Ratio", 0.40, "number"),
+        ("Max Drawdown", -21.88, "percent"),
+        ("Volatility", 21.04, "percent"),
+        ("Total Return", 8.34, "percent"),
         ("Alpha", None, "percent"),
         ("Beta", None, "number"),
         ("Win percentage", None, "percent"),
