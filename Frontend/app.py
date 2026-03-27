@@ -107,7 +107,6 @@ col_left, col_right = st.columns([6, 4])
 
 with col_left:
     st.header("Porfolio performance")
-    ### ruiqian add your code here for the metrics ###
     # Placeholder for now
     #st.line_chart([1,2,3,2,5])
     chart_c1, chart_c2, _ = st.columns([1, 1, 4])
@@ -309,5 +308,5 @@ with col_left:
             render_metric(*metric)
 
 with col_right:
-    st.header("Top 10 Stocks by Institutional Holdings")
+    st.header("Top 20 Stocks by Institutional Holdings")
     top_20_table()
