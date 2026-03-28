@@ -1,1 +1,2 @@
-Datasets/**/*.parquet filter=lfs diff=lfs merge=lfs -text
+# only track and upload the parquet files in Datasets/final_files with git lfs
+Datasets/final_files/*.parquet filter=lfs diff=lfs merge=lfs -text

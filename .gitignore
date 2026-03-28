@@ -1,4 +1,24 @@
-
+# Ignore raw data
 Datasets/13F_zip_files/
 temp
-test
+
+# Ignore compiled Python files
+*.pyc
+__pycache__/
+
+# Ignore all files in Datasets
+Datasets/**
+
+# But keep parquet files in Datasets/final_files
+!Datasets/
+!Datasets/final_files/
+!Datasets/final_files/*.parquet
+
+# And keep the download_data_from_kaggle.py file in Datasets
+!Datasets/download_data_from_kaggle.py
+
+# Ignore .env (contains api keys)
+.env
+
+# Ignore test
+test/
