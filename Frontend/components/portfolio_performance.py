@@ -1,3 +1,4 @@
+from datetime import date
 import streamlit as st
 import plotly.graph_objects as go
 from streamlit_echarts import st_echarts
@@ -87,6 +88,39 @@ def portfolio_performance():
         522.047
     ]
 
+    from_date = st.session_state.get("from_date", None)
+    to_date = st.session_state.get("to_date", None)
+
+    if from_date is None or to_date is None:
+        st.warning("Please select date range")
+        return
+
+    quarter_end_dates = [
+        date(2022, 6, 30),
+        date(2022, 9, 30),
+        date(2022, 12, 31),
+        date(2023, 3, 31),
+        date(2023, 6, 30),
+        date(2023, 9, 30),
+        date(2023, 12, 31),
+    ]
+
+    filtered = [
+        (d, label, p, s)
+        for d, label, p, s in zip(quarter_end_dates, portfolio_dates, portfolio_values, spy_values)
+        if from_date <= d <= to_date
+    ]
+
+    if not filtered:
+        st.warning("No data available for the selected date range")
+        # fallback to full dataset
+        filtered = list(zip(quarter_end_dates, portfolio_dates, portfolio_values, spy_values))
+
+    _, portfolio_dates, portfolio_values, spy_values = zip(*filtered)
+    portfolio_dates = list(portfolio_dates)
+    portfolio_values = list(portfolio_values)
+    spy_values = list(spy_values)
+
     if use_log_scale:
         portfolio_plot = log_returns(portfolio_values)
         spy_plot = log_returns(spy_values)
@@ -131,8 +165,8 @@ def portfolio_performance():
                 }
             }
         ]
-    portfolio_area = {"opacity": 0.22}
-    spy_area = {"opacity": 0.42}
+    #portfolio_area = {"opacity": 0.22}
+    #spy_area = {"opacity": 0.42}
 
     if use_log_scale:
         series = [
@@ -143,7 +177,7 @@ def portfolio_performance():
                 "symbol": "circle",
                 "symbolSize": 8,
                 "data": portfolio_plot,
-                "areaStyle": {"opacity": 0.22}
+                #"areaStyle": {"opacity": 0.22}
             }
         ]
 
@@ -155,7 +189,7 @@ def portfolio_performance():
                 "symbol": "circle",
                 "symbolSize": 7,
                 "data": spy_plot,
-                "areaStyle": {"opacity": 0.42}
+                #"areaStyle": {"opacity": 0.42}
             })
     else:
         series = [
@@ -167,7 +201,7 @@ def portfolio_performance():
                 "symbol": "circle",
                 "symbolSize": 8,
                 "data": portfolio_plot,
-                "areaStyle": {"opacity": 0.22}
+                #"areaStyle": {"opacity": 0.22}
             }
         ]
 
@@ -180,7 +214,7 @@ def portfolio_performance():
                 "symbol": "circle",
                 "symbolSize": 7,
                 "data": spy_plot,
-                "areaStyle": {"opacity": 0.42}
+                #"areaStyle": {"opacity": 0.42}
             })
 
     chart_option = {
