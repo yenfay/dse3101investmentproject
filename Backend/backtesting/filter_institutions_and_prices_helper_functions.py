@@ -11,6 +11,9 @@ def filter_form13f_for_top_institutions(folder_path: str, institution_list: list
     Filters 13F files by CIK and saves directly to a new parquet file 
     without loading everything into memory.
     """
+    # Get length of institutions list
+    num_institutions = len(institution_list)
+
     # Format the CIK list for the SQL IN clause
     cik_filter = ", ".join(f"'{c}'" for c in institution_list)
     
@@ -20,12 +23,12 @@ def filter_form13f_for_top_institutions(folder_path: str, institution_list: list
             SELECT
                 CIK,
                 FILINGMANAGER_NAME,
-                PERIODOFREPORT,
-                FILING_DATE,
+                CAST(PERIODOFREPORT AS DATE) AS PERIODOFREPORT,
+                CAST(FILING_DATE AS DATE) AS FILING_DATE,
                 TABLEVALUETOTAL,
                 VALUE,
-                CUSIP,
-                ticker,
+                CAST(CUSIP AS VARCHAR) AS CUSIP,
+                CAST(ticker AS VARCHAR) AS ticker,
                 name,      
                 exchCode,
                 equity_portfolio_total,
@@ -34,38 +37,36 @@ def filter_form13f_for_top_institutions(folder_path: str, institution_list: list
             WHERE CIK IN ({cik_filter})
             AND exchCode IN ('US')
         )
-        TO '{form13f_output}/final_form13f.parquet' (FORMAT PARQUET)
+        TO '{form13f_output}/final_top{num_institutions}_form13f.parquet' (FORMAT PARQUET)
     """
     
     # Execute the copy command
     con.execute(query)
-    print(f"Filtered holdings saved to {form13f_output}/final_form13f.parquet")
+    print(f"Filtered holdings saved to {form13f_output}/final_top{num_institutions}_form13f.parquet")
 
 
-def filter_prices_for_top_institutions(prices_file: str, holdings_file: str, prices_output_dir: str):
-    # 1. Clean the output path (Force forward slashes for DuckDB)
-    # Ensure we are pointing to a FILE, not just a folder
-    output_file_path = os.path.join(prices_output_dir, "final_prices.parquet").replace("\\", "/")
-    
-    # 2. Convert input paths to forward slashes to avoid Windows escape char issues
-    clean_prices = str(prices_file).replace("\\", "/")
-    clean_holdings = str(holdings_file).replace("\\", "/")
+def filter_prices_for_top_institutions(institution_list: list[str], prices_file: str, holdings_file: str, prices_output_dir: str):
+    """
+    Filters the full stock price data to only include stocks held by the top_N institutions.
+    """
+    # Get length of institutions list
+    num_institutions = len(institution_list)
 
     query = f"""
         COPY (
             SELECT p.*
-            FROM read_parquet('{clean_prices}') AS p
+            FROM read_parquet('{prices_file}') AS p
             WHERE p.ticker IN (
-                SELECT DISTINCT ticker 
-                FROM read_parquet('{clean_holdings}')
+                SELECT DISTINCT ticker  
+                FROM read_parquet('{holdings_file}')
                 WHERE ticker IS NOT NULL
             )
         )
-        TO '{output_file_path}' (FORMAT PARQUET);
+        TO '{prices_output_dir}/final_top{num_institutions}_prices.parquet' (FORMAT PARQUET);
     """
 
     con.execute(query)
-    print(f"Filtered price data saved to: {output_file_path}")
+    print(f"Filtered price data saved to: {prices_output_dir}/final_top{num_institutions}_prices.parquet")
 
 
 

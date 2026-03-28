@@ -14,7 +14,7 @@ con = duckdb.connect()
 
 def load_holdings(file_path: str) -> pd.DataFrame:
     """
-    Read all quarterly 13F parquet files from folder_path into a single DataFrame.
+    Read all quarterly 13F parquet files from file_path into a single DataFrame.
     Selects only the columns needed downstream.
     """
     df = con.execute(f"""
@@ -83,8 +83,8 @@ def aggregate_stock_weights(df: pd.DataFrame) -> pd.DataFrame:
     """).df()
 
 
-def rank_top10(df: pd.DataFrame) -> pd.DataFrame:
-    """Rank stocks by agg_weight within each quarter; keep top 10."""
+def rank_topN(df: pd.DataFrame, topN: int = 10) -> pd.DataFrame:
+    """Rank stocks by agg_weight within each quarter; keep top N."""
     return con.execute("""
         SELECT *
         FROM (
@@ -92,13 +92,13 @@ def rank_top10(df: pd.DataFrame) -> pd.DataFrame:
                 *,
                 ROW_NUMBER() OVER (
                     PARTITION BY PERIODOFREPORT
-                    ORDER BY agg_weight DESC
+                    ORDER BY agg_weight DESC, ticker ASC
                 ) AS rank
             FROM df
         )
-        WHERE rank <= 10
+        WHERE rank <= ?
         ORDER BY PERIODOFREPORT, rank
-    """).df()
+    """, [topN]).df()
 
 # -----------------------------------------------------------------------------------------------
 # Get trade prices by applying filing lag logic and joining with price data
@@ -122,7 +122,7 @@ def apply_filing_lag_and_get_trade_prices(df: pd.DataFrame, prices: pd.DataFrame
     Returns df augmented with:
         candidate_date  -- PERIODOFREPORT + lag_days (before snapping): When the information is available.
         trade_date      -- first trading day >= candidate_date: The actual first day the market is open to let u execute the trade
-        entry_price     -- open* on trade_date: The price you bought / sell at 
+        entry_price     -- adjusted open* on trade_date: The price you bought / sell at 
         adj_close       -- for evaluation of portfolio performance
     """
     result = con.execute(f"""
@@ -139,7 +139,7 @@ def apply_filing_lag_and_get_trade_prices(df: pd.DataFrame, prices: pd.DataFrame
             l.rank,
             l.candidate_date,
             p.date      AS trade_date,
-            p.open AS entry_price,
+            p.adj_open AS entry_price,
             p.adj_close AS adj_close
         FROM lagged l
         JOIN prices p
@@ -157,12 +157,12 @@ def apply_filing_lag_and_get_trade_prices(df: pd.DataFrame, prices: pd.DataFrame
 # Extract price subset for only the tickers ever held in the backtest, to save memory in the backtest.
 # -----------------------------------------------------------------------------------------------
 
-def extract_price_subset(prices: pd.DataFrame, top10: pd.DataFrame) -> pd.DataFrame:
+def extract_price_subset(prices: pd.DataFrame, topN: pd.DataFrame) -> pd.DataFrame:
     """Filter prices to only the tickers ever held, saving memory in the backtest."""
     return con.execute("""
         SELECT p.*
         FROM prices p
-        SEMI JOIN (SELECT DISTINCT ticker FROM top10) t
+        SEMI JOIN (SELECT DISTINCT ticker FROM topN) t
             ON p.ticker = t.ticker
         ORDER BY p.ticker, p.date
     """).df()
@@ -171,10 +171,13 @@ def extract_price_subset(prices: pd.DataFrame, top10: pd.DataFrame) -> pd.DataFr
 # ---------------------------------------------------------------------------
 # Back-test  (equal-weight, quarterly rebalance, use smart rebalance to minimise unnecessary trading)
 # ---------------------------------------------------------------------------
- 
-def run_backtest(top10: pd.DataFrame,
+# need to put in transaction cost into this
+# per traded dollar. 
+
+def run_backtest(topN: pd.DataFrame,
                  prices: pd.DataFrame,
-                 initial_capital: float) -> pd.DataFrame:
+                 initial_capital: float,
+                 cost_rate: float = 0.001) -> pd.DataFrame:
     """
     Equal-weight quarterly rebalance back-test.
  
@@ -182,9 +185,9 @@ def run_backtest(top10: pd.DataFrame,
     ---------
     * trade_date = PERIODOFREPORT + lag_days (snapped forward to next trading day).
     * Each quarter's holding period: [trade_date[q], trade_date[q+1]).
-    * On trade_date[q] SMART rebalancing is executed at the OPEN price:
-        - exits   (dropped from top-10): sell all shares at open
-        - entries (new to top-10):       buy target_allocation / open_price shares
+    * On trade_date[q] SMART rebalancing is executed at the adjusted OPEN price:
+        - exits   (dropped from top-N): sell all shares at open
+        - entries (new to top-N):       buy target_allocation / open_price shares
         - stayers (in both quarters):    trade only the DELTA needed to restore
                                          equal weight (price drift during the quarter
                                          means their weights are no longer equal)
@@ -219,15 +222,15 @@ def run_backtest(top10: pd.DataFrame,
     """
  
     # ---- normalise date types to Python date for consistent comparisons ----
-    top10 = top10.copy()
-    top10["PERIODOFREPORT"] = pd.to_datetime(top10["PERIODOFREPORT"]).dt.date
-    top10["trade_date"]     = pd.to_datetime(top10["trade_date"]).dt.date
+    topN = topN.copy()
+    topN["PERIODOFREPORT"] = pd.to_datetime(topN["PERIODOFREPORT"]).dt.date
+    topN["trade_date"]     = pd.to_datetime(topN["trade_date"]).dt.date
  
     prices = prices.copy()
     prices["date"] = pd.to_datetime(prices["date"]).dt.date
  
     # ---- sort quarters ------------------------------------------------
-    quarters = sorted(top10["PERIODOFREPORT"].unique())
+    quarters = sorted(topN["PERIODOFREPORT"].unique())
     if len(quarters) < 2:
         raise ValueError(
             f"Need at least 2 quarters to run a backtest. "
@@ -236,14 +239,14 @@ def run_backtest(top10: pd.DataFrame,
  
     # ---- trade_date per quarter --------------------------------------
     trade_date_map: dict = (
-        top10.groupby("PERIODOFREPORT")["trade_date"]
+        topN.groupby("PERIODOFREPORT")["trade_date"]
              .first()
              .to_dict()
     )
  
     # ---- tickers per quarter -----------------------------------------
     tickers_map: dict = (
-        top10.groupby("PERIODOFREPORT")["ticker"]
+        topN.groupby("PERIODOFREPORT")["ticker"]
              .apply(list)
              .to_dict()
     )
@@ -269,9 +272,9 @@ def run_backtest(top10: pd.DataFrame,
  
     # ---- wide open price table for rebalance execution ---------------
     # Only needed on trade_dates; we look up per-ticker open on demand
-    open_wide = (
+    adj_open_wide = (
         prices
-        .pivot_table(index="date", columns="ticker", values="open")
+        .pivot_table(index="date", columns="ticker", values="adj_open")
         .sort_index()
     )
  
@@ -287,7 +290,7 @@ def run_backtest(top10: pd.DataFrame,
         period_start = trade_date_map[q_now]    # inclusive: rebalance + first valuation day
         period_end   = trade_date_map[q_next]   # exclusive: next rebalance date
  
-        stocks_now = top10[top10["PERIODOFREPORT"] == q_now].set_index("ticker")
+        stocks_now = topN[topN["PERIODOFREPORT"] == q_now].set_index("ticker")
         q_tickers  = tickers_map[q_now]
  
         # holding period: trade_date[q] to last trading day before trade_date[q+1]
@@ -295,13 +298,12 @@ def run_backtest(top10: pd.DataFrame,
         holding_period_map[q_now] = f"{period_start} to {last_trading_day}"
  
         # ── Get open prices for this rebalance date ───────────────────
-        open_row = open_wide.loc[period_start] if period_start in open_wide.index else None
-        if open_row is None:
-            # fallback to last available adj_close row if open is missing entirely
-            open_row = adj_close_wide.loc[adj_close_wide.index <= period_start].iloc[-1]
+        if period_start not in adj_open_wide.index:
+            raise ValueError(f"No adjusted open data for trade date {period_start}")
+        open_row = adj_open_wide.loc[period_start]
  
-        def get_open(ticker: str) -> float:
-            """Return open price for ticker on rebalance date, or NaN if unavailable."""
+        def get_price(ticker: str) -> float:
+            """Return adjusted open price for ticker on rebalance date."""
             val = open_row.get(ticker, float("nan"))
             return float(val) if pd.notna(val) and val > 0 else float("nan")
  
@@ -316,50 +318,67 @@ def run_backtest(top10: pd.DataFrame,
         # We need the total $ value to compute equal-weight target allocations.
         if positions:
             portfolio_value = sum(
-                shares * get_open(tkr)
+                shares * get_price(tkr)
                 for tkr, shares in positions.items()
-                if not np.isnan(get_open(tkr))
+                if not np.isnan(get_price(tkr))
             )
  
-        # ── Step 2: smart rebalance — minimise unnecessary trading ────────
-        #
-        # Target: each of the 10 stocks gets exactly 1/len(portfolio) of portfolio_value.
-        #
-        # exits   → sell all shares (full liquidation)
-        # entries → buy target_allocation / open_price shares (fresh position)
-        # stayers → current_value = shares_held * open_price
-        #           delta = target_allocation - current_value
-        #           if delta > 0: buy  abs(delta) / open_price more shares
-        #           if delta < 0: sell abs(delta) / open_price shares
-        #           net trade is only the DIFFERENCE from target, not a full rebuy
-        #
-        # This is equivalent to a full sell-and-rebuy in terms of final positions,
-        # but executes far fewer shares traded for stayers.
- 
-        n_stocks          = len(stocks_now)
-        target_allocation = portfolio_value / n_stocks   # $ per stock
- 
+        # ── Step 2: rebalance with transaction costs ─────────────
+
+        # Step 2a — compute CURRENT values at open
+        current_values = {}
+        for tkr, shares in positions.items():
+            px = get_price(tkr)
+            if not np.isnan(px):
+                current_values[tkr] = shares * px
+
+        if current_values:
+            portfolio_value = sum(current_values.values())
+
+        n_stocks = len(stocks_now)
+        if n_stocks == 0:
+            continue
+
+        # Step 2b — first-pass target allocation (before cost)
+        pre_cost_portfolio_value = float(portfolio_value)
+        target_allocation = portfolio_value / n_stocks
+
+        # Step 2c — compute turnover
+        turnover = 0.0
+
+        all_tickers = set(current_values.keys()) | set(stocks_now.index)
+
+        for tkr in all_tickers:
+            current_val = current_values.get(tkr, 0.0)
+            target_val  = target_allocation if tkr in stocks_now.index else 0.0
+            turnover += abs(target_val - current_val)
+
+        # Step 2d — compute transaction cost
+        transaction_cost = cost_rate * turnover
+
+        # Step 2e — deduct cost
+        portfolio_value -= transaction_cost
+
+        if portfolio_value <= 0:
+            raise ValueError("Portfolio value wiped out by transaction costs.")
+
+        # Step 2f — recompute target allocation AFTER cost
+        target_allocation = portfolio_value / n_stocks
+
+        # Step 2g — set final positions
         new_positions: dict[str, float] = {}
- 
+
         for ticker, srow in stocks_now.iterrows():
-            open_price = srow["entry_price"]   # open on trade_date from apply_filing_lag
+            open_price = get_price(ticker)
             if np.isnan(open_price) or open_price <= 0:
-                continue   # skip if price unavailable
- 
-            if ticker in entries:
-                # Fresh buy: allocate full target_allocation at open
-                new_positions[ticker] = target_allocation / open_price
- 
-            elif ticker in stayers:
-                # Already held: just update share count to hit target weight
-                # current_value may be above or below target due to price drift
-                # new_shares = target_allocation / open_price  (same formula, cleaner)
-                # The difference (new_shares - old_shares) is the net trade executed
-                new_positions[ticker] = target_allocation / open_price
- 
-        # exits are simply not carried into new_positions → effectively sold
- 
+                continue
+
+            new_positions[ticker] = target_allocation / open_price
+
         positions = new_positions
+
+        quarter_start_value = float(portfolio_value)
+        quarter_start_value_gross = float(pre_cost_portfolio_value)
  
         # ── Step 3: daily mark-to-market using adj_close ───────────────
         mask = (adj_close_wide.index >= period_start) & (adj_close_wide.index < period_end)
@@ -371,8 +390,6 @@ def run_backtest(top10: pd.DataFrame,
         # Fast vectorised dot product: (n_days x n_tickers) @ (n_tickers,) = (n_days,)
         daily_values = period_adj[held_tickers].values @ shares_vec
  
-        quarter_start_value = float(daily_values[0]) if len(daily_values) > 0 else portfolio_value
- 
         for date, val in zip(period_adj.index, daily_values):
             history.append({
                 "date":            date,
@@ -382,11 +399,11 @@ def run_backtest(top10: pd.DataFrame,
                 "tickers":         q_tickers,
                 "portfolio_value": float(val),
                 "_q_start_val":    quarter_start_value,
+                "_q_start_val_gross": quarter_start_value_gross,
+
+                "_turnover":        turnover,
+                "_transaction_cost": transaction_cost,
             })
- 
-        # carry forward end-of-period adj_close value into next quarter
-        portfolio_value = float(daily_values[-1]) if len(daily_values) > 0 else portfolio_value
- 
     # ---- assemble output ----------------------------------------------
     result = pd.DataFrame(history)
     result = result.sort_values("date").reset_index(drop=True)
@@ -401,10 +418,27 @@ def run_backtest(top10: pd.DataFrame,
     q_end = result.groupby("quarter")["portfolio_value"].last().rename("_q_end_val")
     result = result.join(q_end, on="quarter")
     result["quarter_return"] = (result["_q_end_val"] / result["_q_start_val"]) - 1
-    result = result.drop(columns=["_q_start_val", "_q_end_val"])
+
+    # ---- turnover per quarter --------------------------------
+    q_turnover = result.groupby("quarter")["_turnover"].first()
+    result = result.join(q_turnover.rename("turnover"), on="quarter")
+
+    # ---- transaction cost per quarter -------------------------
+    q_cost = result.groupby("quarter")["_transaction_cost"].first()
+    result = result.join(q_cost.rename("transaction_cost"), on="quarter")
+
+    # ---- cost drag (% of capital lost to cost) ----------------
+    # Computed before dropping _q_start_val to avoid KeyError
+    result["cost_drag"] = result["transaction_cost"] / result["_q_start_val_gross"]
+
+    # clean up temp cols
+    result = result.drop(columns=["_q_start_val", "_q_start_val_gross", "_q_end_val", "_turnover", "_transaction_cost"])
  
     # reorder columns cleanly
-    result = result[["date", "quarter", "trade_date", "holding_period", "tickers", "portfolio_value",
-                     "daily_return", "cum_return", "quarter_return"]]
+    result = result[[
+            "date", "quarter", "trade_date", "holding_period", "tickers",
+            "portfolio_value", "daily_return", "cum_return", "quarter_return",
+            "turnover", "transaction_cost", "cost_drag"
+        ]]
  
     return result
