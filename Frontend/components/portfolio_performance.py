@@ -62,7 +62,8 @@ def log_returns(series):
         returns.append(math.log(series[i] / series[i - 1]))
     return returns
     
-
+RF_ANNUAL = 0.0375
+RF_QUARTERLY = RF_ANNUAL / 4
 # Placeholder for now
 #st.line_chart([1,2,3,2,5])
 def portfolio_performance():
