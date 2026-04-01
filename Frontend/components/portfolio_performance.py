@@ -5,13 +5,19 @@ from streamlit_echarts import st_echarts
 import math
 from streamlit_echarts import st_echarts, JsCode
 import pandas as pd
+from Backend.backtesting.batch_process_rank_stocks import main
 
 @st.cache_data
 def load_frontend_data():
-
-    # assume main() returns:
-    # portfolio_df, metrics_df
-    portfolio_df, metrics_df = main()
+    portfolio_df, metrics_df = main(
+        userinput_start_date='2013-12-31',
+        userinput_end_date='2025-05-23',
+        userinput_initial_capital=10_000,
+        userinput_topN_stocks=10,
+        userinput_topN_institutions=10,
+        userinput_lag=47,
+        userinput_cost_rate=0.001,
+    )
     return portfolio_df, metrics_df
 
 # ---------- metric helper functions ----------
@@ -72,47 +78,22 @@ def portfolio_performance():
     with chart_c2:
         show_benchmark = st.checkbox("Show SPY", value=True)
 
-    portfolio_dates = [
-        "2022-Q2", "2022-Q3", "2022-Q4",
-        "2023-Q1", "2023-Q2", "2023-Q3", "2023-Q4"
-    ]
-
-    portfolio_values = [
-        8371.937801,
-        9314.938979,
-        8577.787879,
-        8729.342859,
-        8768.148067,
-        10551.983110,
-        10834.367892
-    ]
-
-    spy_values = [
-        384.624,
-        401.411,
-        399.312,
-        432.685,
-        440.866,
-        494.167,
-        522.047
-    ]
-
+    portfolio_df, metrics_df = load_frontend_data()
+    portfolio_dates = portfolio_df["quarter"].tolist()
+    portfolio_values = portfolio_df["portfolio_value"].tolist()
+    #spy_values = portfolio_df["spy_value"].tolist()
+    spy_values = portfolio_values.copy()
     from_date = st.session_state.get("from_date", None)
     to_date = st.session_state.get("to_date", None)
 
     if from_date is None or to_date is None:
         st.warning("Please select date range")
         return
-
-    quarter_end_dates = [
-        date(2022, 6, 30),
-        date(2022, 9, 30),
-        date(2022, 12, 31),
-        date(2023, 3, 31),
-        date(2023, 6, 30),
-        date(2023, 9, 30),
-        date(2023, 12, 31),
-    ]
+    quarter_end_dates = pd.to_datetime(portfolio_df["date"]).dt.date.tolist()
+    #portfolio_dates = ["2022-Q2", "2022-Q3", "2022-Q4","2023-Q1", "2023-Q2", "2023-Q3", "2023-Q4"]
+    #portfolio_values = [8371.937801,9314.938979,8577.787879,8729.342859,8768.148067,10551.983110,10834.367892]
+    #spy_values = [384.624,401.411,399.312,432.685,440.866,494.167,522.047]
+    #quarter_end_dates = [date(2022, 6, 30),date(2022, 9, 30),date(2022, 12, 31),date(2023, 3, 31),date(2023, 6, 30),date(2023, 9, 30),date(2023, 12, 31)]
 
     filtered = [
         (d, label, p, s)
@@ -123,10 +104,11 @@ def portfolio_performance():
     if not filtered:
         st.warning("No data available for the selected date range")
         # fallback to full dataset
-        filtered = list(zip(quarter_end_dates, portfolio_dates, portfolio_values, spy_values))
+        #filtered = list(zip(quarter_end_dates, portfolio_dates, portfolio_values, spy_values))
+        return
 
     _, portfolio_dates, portfolio_values, spy_values = zip(*filtered)
-    portfolio_dates = list(portfolio_dates)
+    portfolio_dates = [str(x) for x in portfolio_dates]
     portfolio_values = list(portfolio_values)
     spy_values = list(spy_values)
 
@@ -137,20 +119,20 @@ def portfolio_performance():
         portfolio_plot = portfolio_values
         spy_plot = spy_values
 
-    # To integrate with backend, replace portfolio_dates and portfolio_values with backend output:
-    # portfolio_dates = backend_output["dates"]
-    # portfolio_values = backend_output["portfolio_values"]
-    # spy_values = backend_output["spy_values"]
 
     if use_log_scale:
-        yAxis = {
-            "type": "value",
-            "axisLabel": {
-                "formatter": JsCode(
-                    "function(value) { return (value * 100).toFixed(1) + '%'; }"
-                )
+        yAxis = [
+            {
+                "type": "value",
+                "name": "Log Return",
+                "position": "left",
+                "axisLabel": {
+                    "formatter": JsCode(
+                        "function(value) { return (value * 100).toFixed(1) + '%'; }"
+                    )
+                }
             }
-        }
+        ]
     else:
         yAxis = [
             {
@@ -182,11 +164,11 @@ def portfolio_performance():
             {
                 "name": "Portfolio",
                 "type": "line",
+                "yAxisIndex": 0,
                 "smooth": False,
                 "symbol": "circle",
                 "symbolSize": 8,
                 "data": portfolio_plot,
-                #"areaStyle": {"opacity": 0.22}
             }
         ]
 
@@ -194,11 +176,11 @@ def portfolio_performance():
             series.append({
                 "name": "SPY",
                 "type": "line",
+                "yAxisIndex": 0,
                 "smooth": False,
                 "symbol": "circle",
                 "symbolSize": 7,
                 "data": spy_plot,
-                #"areaStyle": {"opacity": 0.42}
             })
     else:
         series = [
@@ -210,7 +192,6 @@ def portfolio_performance():
                 "symbol": "circle",
                 "symbolSize": 8,
                 "data": portfolio_plot,
-                #"areaStyle": {"opacity": 0.22}
             }
         ]
 
@@ -223,8 +204,10 @@ def portfolio_performance():
                 "symbol": "circle",
                 "symbolSize": 7,
                 "data": spy_plot,
-                #"areaStyle": {"opacity": 0.42}
             })
+    legend_data = ["Portfolio"]
+    if show_benchmark:
+        legend_data.append("SPY")
 
     chart_option = {
         "title": {
@@ -235,7 +218,7 @@ def portfolio_performance():
             "trigger": "axis"
         },
         "legend": {
-            "data": ["Portfolio", "SPY"],
+            "data": legend_data,
             "top": 40
         },
         "grid": {
@@ -262,15 +245,20 @@ def portfolio_performance():
         "series": series
     }
 
-    st_echarts(chart_option, height="450px")
+    st_echarts(
+        chart_option,
+        height="450px",
+        key=f"portfolio_chart_{use_log_scale}_{show_benchmark}"
+    )
 
     starting_capital = portfolio_values[0]
     ending_capital = portfolio_values[-1]
 
     # CAGR (simple version based on periods)
     num_periods = len(portfolio_values) - 1
-    cagr = ((ending_capital / starting_capital) ** (1 / max(num_periods, 1)) - 1) * 100
-
+    years = num_periods / 4
+    cagr = ((ending_capital / starting_capital) ** (1 / max(years, 1e-6)) - 1) * 100
+    
     # Max Drawdown
     peak = portfolio_values[0]
     max_drawdown = 0
