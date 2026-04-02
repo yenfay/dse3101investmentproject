@@ -18,9 +18,7 @@ st.set_page_config(
 )
 
 # title
-c_title, c_backtest = st.columns([8, 2], vertical_alignment="center")
-with c_title:
-    st.title("Dashboard")
+st.title("Dashboard")
 
 # date options
 quarter_end_dates = [
