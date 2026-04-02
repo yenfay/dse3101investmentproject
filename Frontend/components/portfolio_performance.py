@@ -9,15 +9,7 @@ from Backend.backtesting.batch_process_rank_stocks import main
 import numpy as np
 
 @st.cache_data
-def load_frontend_data(
-    start_date='2013-12-31',
-    end_date='2025-05-23',
-    initial_capital=10_000,
-    topN_stocks=10,
-    topN_institutions=10,
-    lag=47,
-    cost_rate=0.001,
-):
+def load_frontend_data(start_date='2013-12-31',end_date='2025-05-23',initial_capital=10_000,topN_stocks=10,topN_institutions=10,lag=47,cost_rate=0.001,):
     portfolio_df, metrics_df = main(
         userinput_start_date=str(start_date),
         userinput_end_date=str(end_date),
@@ -91,26 +83,31 @@ def portfolio_performance():
 
     from_date = st.session_state.get("from_date", None)
     to_date = st.session_state.get("to_date", None)
-    
+    initial_capital = st.session_state.get("initial_capital", 10000)
+    cost_rate = st.session_state.get("fee_per_trade", 0.001)
+    lag = st.session_state.get("lag", 47)
+    topN_stocks = st.session_state.get("topN_stocks", 10)
+    topN_institutions = st.session_state.get("topN_institutions", 10)
 
     portfolio_df, metrics_df = load_frontend_data(
         start_date=from_date,
-        end_date=to_date
+        end_date=to_date,
+        initial_capital=initial_capital,
+        topN_stocks=topN_stocks,
+        topN_institutions=topN_institutions,
+        lag=lag,
+        cost_rate=cost_rate,
     )
     portfolio_dates = portfolio_df["quarter"].tolist()
     portfolio_values = portfolio_df["portfolio_value"].tolist()
     #spy_values = portfolio_df["spy_value"].tolist()
-    spy_values = portfolio_values.copy()
+    spy_values = portfolio_values.copy() # Dummy, until spy_values added in backend
     
     if from_date is None or to_date is None:
         st.warning("Please select date range")
         return
     quarter_end_dates = pd.to_datetime(portfolio_df["date"]).dt.date.tolist()
-    #portfolio_dates = ["2022-Q2", "2022-Q3", "2022-Q4","2023-Q1", "2023-Q2", "2023-Q3", "2023-Q4"]
-    #portfolio_values = [8371.937801,9314.938979,8577.787879,8729.342859,8768.148067,10551.983110,10834.367892]
-    #spy_values = [384.624,401.411,399.312,432.685,440.866,494.167,522.047]
-    #quarter_end_dates = [date(2022, 6, 30),date(2022, 9, 30),date(2022, 12, 31),date(2023, 3, 31),date(2023, 6, 30),date(2023, 9, 30),date(2023, 12, 31)]
-
+   
     filtered = [
         (d, label, p, s)
         for d, label, p, s in zip(quarter_end_dates, portfolio_dates, portfolio_values, spy_values)
@@ -119,8 +116,6 @@ def portfolio_performance():
 
     if not filtered:
         st.warning("No data available for the selected date range")
-        # fallback to full dataset
-        #filtered = list(zip(quarter_end_dates, portfolio_dates, portfolio_values, spy_values))
         return
 
     _, portfolio_dates, portfolio_values, spy_values = zip(*filtered)
@@ -172,8 +167,6 @@ def portfolio_performance():
                 }
             }
         ]
-    #portfolio_area = {"opacity": 0.22}
-    #spy_area = {"opacity": 0.42}
 
     if use_log_scale:
         series = [
