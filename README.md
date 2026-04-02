@@ -3,9 +3,17 @@
 ## Prerequisites
 
 - Python 3.x
-- A virtual environment (optional but recommended)
+- A virtual environment 
 - Kaggle account with API credentials
 - OpenFIGI API key
+
+---
+
+## Quick Start (Development)
+1. Clone the repo and set up `.env` with `DEBUG=true`
+2. Activate your virtual environment
+3. `pip install -r requirements.txt`
+4. `python -m Backend.transform.batch_run.batch_process_form13f`
 
 ---
 
@@ -40,11 +48,33 @@ OPENFIGI_URL=https://api.openfigi.com/v3/mapping
 >
 > **`DEBUG=false` (Production):** Downloads only the raw zip files required for the pipeline.
 
+
+### 3. Install Dependencies
+
+Ensure your virtual environment is activated, then run:
+```bash
+pip install -r requirements.txt
+```
+
+> **Note:** If you do not have a virtual environment set up yet:
+> ```bash
+> # Create virtual environment
+> python -m venv venv
+>
+> # Activate it
+> # Windows:
+> venv\Scripts\activate
+> # Mac/Linux:
+> source venv/bin/activate
+> ```
+> Then run `pip install -r requirements.txt` again.
+
 ---
 
 ## Running the Pipeline
 
-### Step 3 — Transform
+### Step 4 — Transformation 
+### Step 4.1 — Transform Form13F data
 
 #### Production (`DEBUG=false`)
 
@@ -57,10 +87,8 @@ Processes raw data through the full transformation pipeline:
 **Run:**
 
 ```bash
-python -m Backend.transform.batch_process_form13f
+python -m Backend.transform.batch_run.batch_process_form13f
 ```
-
-> ⚠️ **[TBC]** Stock price data integration is pending confirmation from Xander and Benson.
 
 ---
 
@@ -73,21 +101,40 @@ Downloads all data from Kaggle and runs the pipeline locally.
 1. Set `DEBUG=true` in your `.env` file.
 2. Run the transform module:
    ```bash
-   python -m Backend.transform.batch_process_form13f
+   python -m Backend.transform.batch_run.batch_process_form13f
    ```
 3. Verify that a `Datasets/` folder has been created containing the latest data files.
 
 ---
+### Step 4.2 — Transform Stock Price data
+#### Production (`DEBUG=false`)
 
-### Step 4 — Backtesting
+Download stock price data from Yahoo Finance API using stock_market_price.py and consolidate the files into one combined using consolidate_stock_price.py.
 
-#### 4a. Get Top N Institutions
+```
+Data found in: Datasets/stock_price_data folder
+Combined stock price data: Datasets/stock_price_data/stock_prices_all.parquet
+```
 
-> ⚠️ **[TBC]** Benson to confirm outputs for top 10, 20, and 30 institutions.
+**Run:**
+
+```bash
+python -m Backend.transform.batch_run.batch_process_stock_price
+```
+
+### Step 5 — Backtesting
+#### 5a. Get Top N Institutions
+Returns files in Datasets/best_institutions_ranking folder.
+
+**Run (to get files in best_institutions_ranking):**
+
+```bash
+python -m Backend.backtesting.batch_process_rank_institutions
+```
 
 ---
 
-#### 4b. Get Top M Stocks
+#### 5b. Get Top M Stocks
 
 Returns `portfolio_df` and `metrics_df` for the top M stocks. This step runs in conjunction with the frontend.
 
@@ -131,25 +178,31 @@ portfolio_df, metrics_df = main(
 
 ```
 dse3101investmentproject/
-├── .env                          ← secrets and config (never commit this)
+├── .env                         ← secrets and config (never commit this)
 ├── .gitignore
 ├── README.md
-├── config.py                     ← all paths and env variables
+├── config.py                    ← all paths and env variables
 ├── Datasets/
 │   ├── 13F_zip_files/
 │   ├── 13F_clean_files/
 │   ├── 13F_filtered_and_mapped_files/
 │   ├── 13F_filtered_and_mapped_and_screened_files/
 │   ├── data_for_frontend/
-│   ├── final_files/              ← tracked by Git LFS
+│   ├── final_files/                    ← tracked by Git LFS
 │   │   ├── final_top10_form13f.parquet
-│   │   └── final_top10_prices.parquet
+│   │   ├── final_top10_prices.parquet
+│   │   ├── final_top20_form13f.parquet
+│   │   ├── final_top20_prices.parquet
+│   │   ├── final_top30_form13f.parquet
+│   │   └── final_top30_prices.parquet
 │   ├── others/
 │   └── stock_price_data/
 ├── Backend/
 │   ├── transform/
-│   │   ├── batch_process_form13f.py        ← main run function for transform of form13f data
-│   │   └── download_data_from_kaggle.py    ← helper to download latest data from kaggle
+│   │   ├── batch_run
+│   │   │   ├── batch_process_stock_price.py ← main run function for transform of stock price data
+│   │   │   └── batch_process_form13f.py     ← main run function for transform of form13f data
+│   │   └── download_data_from_kaggle.py     ← helper to download latest data from kaggle
 │   └── backtesting/
-│       └── batch_process_rank_stocks.py    ← main run function for backtesting of topN stocks (integration with frontend)
+│       └── batch_process_rank_stocks.py     ← main run function for backtesting of topN stocks (integration with frontend)
 ```
