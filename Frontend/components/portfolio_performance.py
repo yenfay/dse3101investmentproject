@@ -286,7 +286,6 @@ def portfolio_performance():
 
     values_with_anchor = [starting_capital] + portfolio_values
     quarterly_returns = pd.Series(values_with_anchor).pct_change().dropna()
-    quarterly_returns = pd.Series(portfolio_values).pct_change().dropna()
     excess = quarterly_returns - RF_QUARTERLY
     sharpe = (excess.mean() / excess.std()) * np.sqrt(4) if excess.std() != 0 else 0
     downside = quarterly_returns[quarterly_returns < RF_QUARTERLY] - RF_QUARTERLY
