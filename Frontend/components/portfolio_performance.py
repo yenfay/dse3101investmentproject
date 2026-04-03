@@ -9,7 +9,7 @@ from Backend.backtesting.batch_process_rank_stocks import main
 import numpy as np
 
 @st.cache_data
-def load_frontend_data(start_date,end_date,initial_capital=10_000,topN_stocks=10,topN_institutions=10,lag=47,cost_rate=0.001,):
+def load_frontend_data(start_date,end_date,initial_capital,topN_stocks,topN_institutions,lag,cost_rate,):
     portfolio_df, metrics_df = main(
         userinput_start_date=str(start_date),
         userinput_end_date=str(end_date),
