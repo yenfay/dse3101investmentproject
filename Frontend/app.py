@@ -1,9 +1,16 @@
 import sys
+import pandas as pd
 from pathlib import Path
 from datetime import date
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT_DIR))
+
+STOCK_SNAPSHOT_PATH = ROOT_DIR / "Frontend" / "temp_data" / "stock_snapshot.parquet"
+
+stock_snapshot_df = None
+if STOCK_SNAPSHOT_PATH.exists():
+    stock_snapshot_df = pd.read_parquet(STOCK_SNAPSHOT_PATH)
 
 import streamlit as st
 from components.portfolio_performance import portfolio_performance
@@ -98,10 +105,7 @@ try:
             userinput_start_date=from_date.strftime("%Y-%m-%d"),
             userinput_end_date=to_date.strftime("%Y-%m-%d"),
             userinput_initial_capital=float(initial_capital),
-            userinput_topN_institutions=int(topN_institutions),
             userinput_topN_stocks=int(topN),
-            userinput_lag=int(lag),
-            userinput_cost_rate=float(cost_rate),
         )
 except Exception as e:
     st.error(f"Error running backend: {e}")
@@ -118,6 +122,7 @@ with col_right:
     if portfolio_df is not None:
         top_20_table(
             portfolio_df,
+            stock_snapshot_df=stock_snapshot_df,
             top_n=int(topN),
             selected_quarter=from_date.strftime("%Y-%m-%d")
         )
