@@ -144,17 +144,20 @@ def top_20_table(portfolio_df, top_n=10, selected_quarter=None):
     })
 
     row_height = 35
-    header_height = 38
+    header_height = 36
     max_visible_rows = 20
-
     visible_rows = min(len(display_df), max_visible_rows)
-    table_height = header_height + visible_rows * row_height
+    table_height = header_height + visible_rows * row_height - 8
 
     st.dataframe(
         display_df,
-        width="stretch",
         hide_index=True,
-        height=table_height
+        use_container_width=True,
+        height=table_height,
+        column_config={
+            "Rank": st.column_config.NumberColumn("Rank", width="small"),
+            "Ticker": st.column_config.TextColumn("Ticker", width="medium"),
+        }
     )
 
     return tickers
@@ -174,6 +177,7 @@ def render_stock_details(tickers, stock_snapshot_df):
     details = get_stock_details(selected_ticker, stock_snapshot_df)
 
     st.markdown(f"**{selected_ticker} Details**")
+    st.caption("Stock information accurate as of 2 April 2026 (US market close)")
 
     c1, c2, c3, c4 = st.columns(4)
     c1.metric("Market Cap", details["Market Cap"])
