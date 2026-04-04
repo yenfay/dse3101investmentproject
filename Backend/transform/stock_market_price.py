@@ -19,10 +19,11 @@ from config import (
     DEBUG,
     PRICES_DS_ROOT,
     MANIFEST_PATH,
-    RUN_META_PATH,
+    RUN_META_PATH_STOCK,
     TICKER_SOURCE_PATH
 )
 
+RUN_META_PATH = RUN_META_PATH_STOCK
 TICKER_COL = "ticker"
 SECURITY_TYPE_COL = "security_type"
 
