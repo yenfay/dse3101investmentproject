@@ -108,13 +108,14 @@ def portfolio_performance():
     quarter_end_dates = pd.to_datetime(portfolio_df["date"]).dt.date.tolist()
    
     filtered = [
-        (d, label, p, s, t)
-        for d, label, p, s, t in zip(
+        (d, label, p, s, t, td)
+        for d, label, p, s, t, td in zip(
             quarter_end_dates,
             portfolio_dates,
             portfolio_values,
             spy_values,
-            portfolio_df["tickers"]
+            portfolio_df["tickers"],
+            pd.to_datetime(portfolio_df["trade_date"]).dt.strftime("%Y-%m-%d")
         )
         if from_date <= d <= to_date
     ]
@@ -123,12 +124,32 @@ def portfolio_performance():
         st.warning("No data available for the selected date range")
         return
 
-    _, portfolio_dates, portfolio_values, spy_values, tickers = zip(*filtered)
+    _, portfolio_dates, portfolio_values, spy_values, tickers, trade_dates = zip(*filtered)
     portfolio_dates = pd.to_datetime(portfolio_dates)
     portfolio_dates = [d.strftime("%Y-%m-%d") for d in portfolio_dates]
     portfolio_values = list(portfolio_values)
     spy_values = list(spy_values)
     tickers = list(tickers)
+    trade_dates = list(trade_dates)
+
+    trade_lines = []
+    seen_trade_dates = set()
+
+    for td in trade_dates:
+        if td and td not in seen_trade_dates:
+            seen_trade_dates.add(td)
+            trade_lines.append({
+                "xAxis": td,
+                "lineStyle": {
+                    "type": "dashed",
+                    "width": 1.5,
+                    "opacity": 0.8,
+                    "color": "#ef4444"   # red for trade date
+                },
+                "label": {
+                    "show": False
+                }
+            })
 
     if use_log_scale:
         portfolio_plot = log_returns(portfolio_values)
@@ -210,8 +231,21 @@ def portfolio_performance():
                 "yAxisIndex": 0,
                 "smooth": False,
                 "symbol": "circle",
-                "symbolSize": 12,
+                "symbolSize": 18,
+                "selectedMode": "single",
+                "select": {
+                    "itemStyle": {
+                        "color": "#f59e0b",
+                        "borderColor": "#ffffff",
+                        "borderWidth": 2
+                    }
+                },
                 "data": portfolio_series_data,
+                "markLine": {
+                    "symbol": ["none", "none"],
+                    "silent": True,
+                    "data": trade_lines
+                }
             }
         ]
 
@@ -225,6 +259,7 @@ def portfolio_performance():
                 "symbolSize": 7,
                 "data": spy_plot,
             })
+
     else:
         series = [
             {
@@ -233,8 +268,21 @@ def portfolio_performance():
                 "yAxisIndex": 0,
                 "smooth": False,
                 "symbol": "circle",
-                "symbolSize": 16,
+                "symbolSize": 18,
+                "selectedMode": "single",
+                "select": {
+                    "itemStyle": {
+                        "color": "#f59e0b",
+                        "borderColor": "#ffffff",
+                        "borderWidth": 2
+                    }
+                },
                 "data": portfolio_series_data,
+                "markLine": {
+                    "symbol": ["none", "none"],
+                    "silent": True,
+                    "data": trade_lines
+                }
             }
         ]
 
@@ -258,36 +306,7 @@ def portfolio_performance():
             "left": "center"
         },
         "tooltip": {
-            "trigger": "axis",
-            "formatter": JsCode(
-                f"""
-                function (params) {{
-                    const idx = params[0].dataIndex;
-                    const dates = {portfolio_dates};
-                    const tickers = {tickers};
-
-                    let lines = [];
-                    lines.push("Date: " + dates[idx]);
-
-                    for (let i = 0; i < params.length; i++) {{
-                        let p = params[i];
-                        let val = typeof p.value === "number"
-                            ? p.value.toLocaleString(undefined, {{ maximumFractionDigits: 2 }})
-                            : p.value;
-                        lines.push(p.marker + " " + p.seriesName + ": " + val);
-                    }}
-
-                    let t = tickers[idx];
-                    if (typeof t === "string") {{
-                        t = t.replace(/[\[\]'"]/g, "");
-                    }}
-
-                    lines.push("Top N Stocks: " + t);
-
-                    return lines.join("<br/>");
-                }}
-                """
-            )
+            "show": False
         },
         "legend": {
             "data": legend_data,
@@ -303,6 +322,11 @@ def portfolio_performance():
                 "restore": {},
                 "dataZoom": {}
             }
+        },
+        "markLine": {
+            "symbol": ["none", "none"],
+            "silent": True,
+            "data": trade_lines
         },
         "xAxis": {
             "type": "category",
@@ -331,7 +355,7 @@ def portfolio_performance():
         chart_option,
         height="450px",
         key=f"portfolio_chart_{use_log_scale}_{show_benchmark}",
-        on_select="rerun",
+        #on_select="rerun",
         selection_mode="points",
     )
 
