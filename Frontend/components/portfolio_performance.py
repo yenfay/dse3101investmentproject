@@ -104,14 +104,14 @@ def portfolio_performance():
     quarter_end_dates = pd.to_datetime(portfolio_df["date"]).dt.date.tolist()
    
     filtered = [
-        (d, label, p, s, t, td)
-        for d, label, p, s, t, td in zip(
+        (d, label, p, s, t, hp)
+        for d, label, p, s, t, hp in zip(
             quarter_end_dates,
             portfolio_dates,
             portfolio_values,
             spy_values,
             portfolio_df["tickers"],
-            pd.to_datetime(portfolio_df["trade_date"]).dt.strftime("%Y-%m-%d")
+            portfolio_df["holding_period"]
         )
         if from_date <= d <= to_date
     ]
@@ -120,27 +120,48 @@ def portfolio_performance():
         st.warning("No data available for the selected date range")
         return
 
-    _, portfolio_dates, portfolio_values, spy_values, tickers, trade_dates = zip(*filtered)
+    _, portfolio_dates, portfolio_values, spy_values, tickers, holding_periods = zip(*filtered)
     portfolio_dates = pd.to_datetime(portfolio_dates)
     portfolio_dates = [d.strftime("%Y-%m-%d") for d in portfolio_dates]
     portfolio_values = list(portfolio_values)
     spy_values = list(spy_values)
     tickers = list(tickers)
-    trade_dates = list(trade_dates)
+    holding_periods = list(holding_periods)
 
     trade_lines = []
-    seen_trade_dates = set()
+    seen_buy_dates = set()
+    seen_sell_dates = set()
 
-    for td in trade_dates:
-        if td and td not in seen_trade_dates:
-            seen_trade_dates.add(td)
+    for hp in holding_periods:
+        if not hp or " to " not in str(hp):
+            continue
+
+        buy_date, sell_date = [x.strip() for x in str(hp).split(" to ", 1)]
+
+        if buy_date and buy_date not in seen_buy_dates:
+            seen_buy_dates.add(buy_date)
             trade_lines.append({
-                "xAxis": td,
+                "xAxis": buy_date,
                 "lineStyle": {
                     "type": "dashed",
                     "width": 1.5,
                     "opacity": 0.8,
-                    "color": "#ef4444"   # red for trade date
+                    "color": "#22c55e"   # green = buy
+                },
+                "label": {
+                    "show": False
+                }
+            })
+
+        if sell_date and sell_date not in seen_sell_dates:
+            seen_sell_dates.add(sell_date)
+            trade_lines.append({
+                "xAxis": sell_date,
+                "lineStyle": {
+                    "type": "dashed",
+                    "width": 1.5,
+                    "opacity": 0.8,
+                    "color": "#ef4444"   # red = sell
                 },
                 "label": {
                     "show": False
