@@ -70,10 +70,6 @@ def log_returns(series):
         returns.append(math.log(series[i] / series[i - 1]))
     return returns
 
-
-RF_ANNUAL = 0.0375
-RF_QUARTERLY = RF_ANNUAL / 4
-
 #--------- Main function to render portfolio performance chart and metrics ----------
 def portfolio_performance():
     chart_c1, chart_c2, _ = st.columns([1, 1, 4])
@@ -395,15 +391,18 @@ def portfolio_performance():
     profit_to_dd = None
     if max_drawdown != 0:
         profit_to_dd = cagr / abs(max_drawdown)
-
-    values_with_anchor = [starting_capital] + portfolio_values
-    quarterly_returns = pd.Series(values_with_anchor).pct_change().dropna()
-    excess = quarterly_returns - RF_QUARTERLY
-    sharpe = (excess.mean() / quarterly_returns.std()) * np.sqrt(4) if quarterly_returns.std() != 0 else 0
-    downside = quarterly_returns[quarterly_returns < RF_QUARTERLY] - RF_QUARTERLY
+    
+    RF_ANNUAL = 0.0375
+    RF_DAILY = RF_ANNUAL / 252
+    daily_returns = pd.Series(portfolio_values).pct_change().dropna()
+    # Sharpe
+    excess = daily_returns - RF_DAILY
+    sharpe = (excess.mean() / daily_returns.std()) * np.sqrt(252) if daily_returns.std() != 0 else 0
+    # Sortino
+    downside = daily_returns[daily_returns < RF_DAILY] - RF_DAILY
     downside_std = np.sqrt((downside ** 2).mean()) if len(downside) > 0 else 0
-    sortino = (excess.mean() / downside_std) * np.sqrt(4) if downside_std != 0 else 0
-
+    sortino = (excess.mean() / downside_std) * np.sqrt(252) if downside_std != 0 else 0
+    
     metrics = [
         ("Sharpe Ratio", sharpe, "number"),          # keep placeholder or backend later
         ("Sortino Ratio", sortino, "number"),         # placeholder
