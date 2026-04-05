@@ -9,6 +9,8 @@ sys.path.insert(0, str(ROOT_DIR))
 
 from components.top_20 import top_20_table, render_stock_details
 from Backend.backtesting.batch_process_rank_stocks import main
+from components.daily_returns import daily_returns
+from components.cummulative_returns import cummulative_returns
 
 try:
     from components.portfolio_performance import portfolio_performance
@@ -174,10 +176,16 @@ with col_left:
         else:
             st.warning("Portfolio Performance component could not be loaded.")
             st.caption(str(portfolio_performance_import_error))
-    with b: 
-        st.write("insert graph here")
-    with c: 
-        st.write("insert graph here")
+    with b:
+        if portfolio_df is not None:
+            daily_returns(portfolio_df)
+        else:
+            st.info("No portfolio data available yet.")
+    with c:
+        if portfolio_df is not None:
+            cummulative_returns(portfolio_df)
+        else:
+            st.info("No portfolio data available yet.")
 
 with col_right:
     st.header("Top Stocks by Institutional Holdings")
