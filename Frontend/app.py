@@ -10,7 +10,7 @@ sys.path.insert(0, str(ROOT_DIR))
 from components.top_20 import top_20_table, render_stock_details
 from Backend.backtesting.batch_process_rank_stocks import main
 from components.daily_returns import daily_returns
-from components.cummulative_returns import cummulative_returns
+from components.cumulative_returns import cumulative_returns
 from components.performance_metrics import performance_metrics
 
 try:
@@ -170,7 +170,7 @@ selected_tickers = None
 
 with col_left:
     #st.header("Portfolio Performance")
-    a, b, c = st.tabs(["Portfolio Performance", "Daily Returns", "Cummulative Returns"])
+    a, b, c = st.tabs(["Portfolio Performance", "Daily Returns", "Cumulative Returns"])
     with a:  
         if portfolio_df is not None:
             portfolio_performance(portfolio_df, metrics_df)
@@ -184,7 +184,7 @@ with col_left:
             st.info("No portfolio data available yet.")
     with c:
         if portfolio_df is not None:
-            cummulative_returns(portfolio_df)
+            cumulative_returns(portfolio_df)
         else:
             st.info("No portfolio data available yet.")
     st.markdown("---")

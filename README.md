@@ -206,11 +206,13 @@ dse3101investmentproject/
 │   └── backtesting/
 │       └── batch_process_rank_stocks.py     ← main run function for backtesting of topN stocks (integration with frontend)
 ├── Frontend/
-│   ├── app.py                               ← main file to run streamlit dashboard
+│   ├── app.py                               ← main file to run dashboard
 │   ├── components/                          
-│   │   ├── add_fees.py                  ← user input functions
-│   │   ├── portfolio_performance.py     ← functions for left panel of dashboard
-│   │   └── top_20.py                    ← functions for right panel of dashboard
+│   │   ├── cumulative_returns.py            ← user input functions
+│   │   ├── daily_returns.py                 ← user input functions
+│   │   ├── performance_metrics.py           ← user input functions
+│   │   ├── portfolio_performance.py         ← functions for left panel of dashboard
+│   │   └── top_20.py                        ← functions for right panel of dashboard
 │   ├── streamlit/
-│   │   └── config.toml                  ← customised theme 
+│   │   └── config.toml                      ← customise theme 
 ```

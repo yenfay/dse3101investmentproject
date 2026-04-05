@@ -3,7 +3,7 @@ import streamlit as st
 from streamlit_echarts import st_echarts, JsCode
 
 
-def cummulative_returns(portfolio_df: pd.DataFrame):
+def cumulative_returns(portfolio_df: pd.DataFrame):
     if portfolio_df is None or portfolio_df.empty:
         st.warning("No portfolio data available.")
         return
@@ -34,7 +34,7 @@ def cummulative_returns(portfolio_df: pd.DataFrame):
     padding = (chart_max - chart_min) * 0.1 if chart_max > chart_min else max(abs(chart_max) * 0.1, 1)
 
     chart_option = {
-        "title": {"text": "Cummulative Returns", "left": "center"},
+        "title": {"text": "Cumulative Returns", "left": "center"},
         "tooltip": {"show": False},
         "legend": {"data": ["Cummulative Return"], "top": 40},
         "grid": {"top": 80},
@@ -69,7 +69,7 @@ def cummulative_returns(portfolio_df: pd.DataFrame):
         }],
         "dataZoom": [{"type": "inside"}, {"type": "slider"}],
         "series": [{
-            "name": "Cummulative Return",
+            "name": "Cumulative Return",
             "type": "line",
             "symbol": "circle",
             "symbolSize": 18,
@@ -77,4 +77,4 @@ def cummulative_returns(portfolio_df: pd.DataFrame):
         }]
     }
 
-    st_echarts(chart_option, height="450px", key="cummulative_returns_chart")
+    st_echarts(chart_option, height="450px", key="cumulative_returns_chart")
