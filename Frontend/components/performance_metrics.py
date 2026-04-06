@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 
-
 def metric_bg(value):
     if value is None:
         return "#3b3f4a"
@@ -22,31 +21,46 @@ def format_metric(value, kind="number"):
         return f"{value:,.2f}"
     return f"{value:.2f}"
 
+def get_arrow(portfolio_val, spy_val):
+    if portfolio_val is None or spy_val is None:
+        return "", "white"
 
-def render_metric(label, value, kind="number"):
+    if portfolio_val > spy_val:
+        return "▲", "#015739"  # white
+    elif portfolio_val < spy_val:
+        return "▼", "#720b00"  # red
+    else:
+        return "-", "#ffffff"  # white
+    
+def render_metric(label, value, kind="number", spy_value=None):
     bg = metric_bg(value)
-    display = format_metric(value, kind)
+
+    display_main = format_metric(value, kind)
+    display_spy = format_metric(spy_value, kind) if spy_value is not None else "--"
+    
+    arrow, arrow_color = get_arrow(value, spy_value)
 
     st.markdown(
         f"""
-        <div style="
-            background:{bg};
-            border-radius:14px;
-            padding:14px;
-            height:80px;
-            display:flex;
-            flex-direction:column;
-            justify-content:space-between;
-            color:white;
-        ">
-            <div style="font-size:16px;font-weight:600;">{label}</div>
-            <div style="font-size:16px;font-weight:700;">{display}</div>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
-
-
+        <div style="background:{bg}; border-radius:14px; padding:14px; height:105px; color:white;">
+        <div style="font-size:16px; font-weight:400; margin-bottom:8px;">{label}</div>
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+        <div>
+                <div style="font-size:10px; opacity:0.8;">Portfolio</div>
+                <div style="font-size:20px;">{display_main}
+                    <span style="color:{arrow_color}; margin-left:6px;">{arrow}
+                    </span>
+                    </div></div>
+                <div style="opacity:0.9; padding-top: 20px">|
+                </div>
+                <div style="text-align:right;">
+                <div style="font-size:10px; opacity:0.8;">SPY</div>
+                <div style="font-size:20px; opacity:1;">
+                    {display_spy}
+                </div></div></div></div>
+    """, 
+    unsafe_allow_html=True)
+    
 def count_quarters(portfolio_df):
     if "quarter" in portfolio_df.columns:
         return portfolio_df["quarter"].nunique()
@@ -57,8 +71,55 @@ def count_quarters(portfolio_df):
 
     return 0
 
+# Compute metrics # 
+def compute_metrics(values, portfolio_df):
+    if values is None or len(values) < 2:
+        return None
+
+    starting = values[0]
+    ending = values[-1]
+
+    number_of_quarters = count_quarters(portfolio_df)
+    years = number_of_quarters / 4 if number_of_quarters > 0 else max(len(values) / 252, 1e-6)
+
+    cagr = ((ending / starting) ** (1 / max(years, 1e-6)) - 1) * 100
+
+    peak = values[0]
+    max_dd = 0
+    for v in values:
+        if v > peak:
+            peak = v
+        drawdown = (v - peak) / peak
+        if drawdown < max_dd:
+            max_dd = drawdown
+    max_dd *= 100
+
+    profit_to_dd = cagr / abs(max_dd) if max_dd != 0 else None
+
+    rf_daily = 0.0375 / 252
+    returns = pd.Series(values).pct_change().dropna()
+
+    sharpe, sortino = 0, 0
+    if len(returns) > 0 and returns.std() != 0:
+        excess = returns - rf_daily
+        sharpe = (excess.mean() / returns.std()) * np.sqrt(252)
+
+        downside = returns[returns < rf_daily] - rf_daily
+        downside_std = np.sqrt((downside ** 2).mean()) if len(downside) > 0 else 0
+        sortino = (excess.mean() / downside_std) * np.sqrt(252) if downside_std != 0 else 0
+
+    return [
+        ("Sharpe Ratio", sharpe, "number"),
+        ("Sortino Ratio", sortino, "number"),
+        ("CAGR", cagr, "percent"),
+        ("Max Drawdown", max_dd, "percent"),
+        ("Starting Capital", starting, "currency"),
+        ("Ending Capital", ending, "currency"),
+        ("Profit / Drawdown", profit_to_dd, "number"),
+    ]
 
 def performance_metrics(portfolio_df, metrics_df=None):
+
     if portfolio_df is None or portfolio_df.empty:
         st.warning("No portfolio data available for metrics.")
         return
@@ -67,68 +128,45 @@ def performance_metrics(portfolio_df, metrics_df=None):
         st.error("portfolio_df must contain 'portfolio_value'.")
         return
 
-    portfolio_values = pd.to_numeric(
-        portfolio_df["portfolio_value"], errors="coerce"
-    ).dropna().tolist()
+    # ---- values ----
+    portfolio_values = portfolio_df["portfolio_value"].tolist()
+    if "spy_value" in portfolio_df.columns:
+        spy_values = portfolio_df["spy_value"].tolist()
+    else:
+        spy_values = portfolio_values.copy()
 
-    if len(portfolio_values) < 2:
+    # ---- Compute metrics ----
+    portfolio_metrics = compute_metrics(portfolio_values, portfolio_df)
+    spy_metrics = compute_metrics(spy_values, portfolio_df) if spy_values else None
+
+    if portfolio_metrics is None:
         st.warning("Not enough data to calculate metrics.")
         return
 
-    starting_capital = portfolio_values[0]
-    ending_capital = portfolio_values[-1]
+    row1 = st.columns(4, gap="small")
 
-    number_of_quarters = count_quarters(portfolio_df)
-    years = number_of_quarters / 4 if number_of_quarters > 0 else max(len(portfolio_values) / 252, 1e-6)
-    cagr = ((ending_capital / starting_capital) ** (1 / max(years, 1e-6)) - 1) * 100
+    for col, p_metric, s_metric in zip(
+        row1,
+        portfolio_metrics[:4],
+        spy_metrics[:4] if spy_metrics else portfolio_metrics[:4]
+    ):
+        label, p_val, kind = p_metric
+        _, s_val, _ = s_metric
 
-    peak = portfolio_values[0]
-    max_drawdown = 0
-    for v in portfolio_values:
-        if v > peak:
-            peak = v
-        drawdown = (v - peak) / peak
-        if drawdown < max_drawdown:
-            max_drawdown = drawdown
-    max_drawdown *= 100
-
-    profit_to_dd = None
-    if max_drawdown != 0:
-        profit_to_dd = cagr / abs(max_drawdown)
-
-    rf_annual = 0.0375
-    rf_daily = rf_annual / 252
-    daily_returns = pd.Series(portfolio_values).pct_change().dropna()
-
-    sharpe = 0
-    sortino = 0
-
-    if len(daily_returns) > 0 and daily_returns.std() != 0:
-        excess = daily_returns - rf_daily
-        sharpe = (excess.mean() / daily_returns.std()) * np.sqrt(252)
-
-        downside = daily_returns[daily_returns < rf_daily] - rf_daily
-        downside_std = np.sqrt((downside ** 2).mean()) if len(downside) > 0 else 0
-        sortino = (excess.mean() / downside_std) * np.sqrt(252) if downside_std != 0 else 0
-
-    metrics = [
-        ("Sharpe Ratio", sharpe, "number"),
-        ("Sortino Ratio", sortino, "number"),
-        ("CAGR", cagr, "percent"),
-        ("Max Drawdown", max_drawdown, "percent"),
-        ("Starting Capital", starting_capital, "currency"),
-        ("Ending Capital", ending_capital, "currency"),
-        ("Profit / Drawdown", profit_to_dd, "number"),
-    ]
-
-    metric_row_1 = st.columns(4, gap="small")
-    for col, metric in zip(metric_row_1, metrics[:4]):
         with col:
-            render_metric(*metric)
-
+            render_metric(label, p_val, kind, spy_value=s_val)
+            
     st.markdown("<div style='height:20px'></div>", unsafe_allow_html=True)
 
-    metric_row_2 = st.columns(3, gap="small")
-    for col, metric in zip(metric_row_2, metrics[4:]):
+    row2 = st.columns(3, gap="small")
+
+    for col, p_metric, s_metric in zip(
+        row2,
+        portfolio_metrics[4:],
+        spy_metrics[4:] if spy_metrics else portfolio_metrics[4:]
+    ):
+        label, p_val, kind = p_metric
+        _, s_val, _ = s_metric
+
         with col:
-            render_metric(*metric)
+            render_metric(label, p_val, kind, spy_value=s_val)
