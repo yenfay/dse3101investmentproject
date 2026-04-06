@@ -25,12 +25,15 @@ except Exception as e:
     portfolio_performance = None
     portfolio_performance_import_error = e
 
-
 STOCK_SNAPSHOT_PATH = ROOT_DIR / "Datasets" / "final_files" / "stock_snapshot.parquet"
 SPY_PATH = ROOT_DIR / "Datasets" / "final_files" / "spy_prices_2013-01-01_to_2026-03-31.parquet"
 
 stock_snapshot_df = pd.read_parquet(STOCK_SNAPSHOT_PATH) if STOCK_SNAPSHOT_PATH.exists() else None
 spy_df = pd.read_parquet(SPY_PATH) if SPY_PATH.exists() else None
+
+# macro page configurations 
+st.set_page_config(page_title="dse3101 project", layout="wide")
+st.title("Dashboard")
 
 # helper functions 
 def get_available_quarter_dates():
@@ -72,10 +75,6 @@ def get_available_quarter_dates():
     quarter_dates = sorted(quarter_dates)
     return quarter_dates
 
-# page configurations 
-st.set_page_config(page_title="dse3101 project", layout="wide")
-st.title("Dashboard")
-
 try:
     quarter_end_dates = get_available_quarter_dates()
 except Exception as e:
@@ -86,6 +85,7 @@ if len(quarter_end_dates) < 3:
     st.error("Not enough available quarter dates found in backend data.")
     st.stop()
 
+# user input configurations 
 c1, c2, c3, c4, c5, c6 = st.columns([0.20, 0.18, 0.18, 0.18, 0.13, 0.13])
 
 with c1:
