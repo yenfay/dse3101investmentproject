@@ -55,7 +55,7 @@ def log_returns(series):
     return returns
 
 #--------- Main function to render portfolio performance chart and metrics ----------
-def portfolio_performance(portfolio_df):
+def portfolio_performance(portfolio_df: pd.DataFrame):
     chart_c1, chart_c2, chart_c3, chart_c4 = st.columns([4, 1, 1, 4])
     with chart_c2:
         use_log_scale = st.checkbox("Log scale", value=False)
@@ -214,7 +214,7 @@ def portfolio_performance(portfolio_df):
                     "itemStyle": {
                         "color": "#f59e0b",
                         "borderColor": "#ffffff",
-                        "borderWidth": 2
+                        "borderWidth": 0
                     }
                 },
                 "data": portfolio_series_data
