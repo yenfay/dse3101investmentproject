@@ -131,7 +131,7 @@ def daily_returns(portfolio_df: pd.DataFrame):
                 "symbolSize": JsCode(
                     """
                     function (value, params) {
-                        return params.name.endsWith('_zero') ? 0 : 18;
+                        return params.name.endsWith('_zero') ? 0 : 10;
                     }
                     """
                 ),
