@@ -11,40 +11,7 @@ import json
 
 #---------- Function to load data from backend ----------
 @st.cache_data
-def load_frontend_data(start_date, end_date, initial_capital, topN_stocks, topM_institutions, cost_rate):
-    portfolio_df, metrics_df = main(
-        userinput_start_date=str(start_date),
-        userinput_end_date=str(end_date),
-        userinput_initial_capital=initial_capital,
-        userinput_topM_institutions=topM_institutions,
-        userinput_topN_stocks=topN_stocks,
-        userinput_cost_rate=cost_rate,
-    )
-    return portfolio_df, metrics_df
-
 # ---------- helper functions ----------
-    bg = metric_bg(value)
-    display = format_metric(value, kind)
-
-    st.markdown(
-        f"""
-        <div style="
-            background:{bg};
-            border-radius:14px;
-            padding:14px;
-            height:80px;
-            display:flex;
-            flex-direction:column;
-            justify-content:space-between;
-            color:white;
-        ">
-            <div style="font-size:16px;font-weight:600;">{label}</div>
-            <div style="font-size:16px;font-weight:700;">{display}</div>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
-
 def count_quarters(portfolio_df):
     return portfolio_df["quarter"].nunique()
 

@@ -19,13 +19,8 @@ from components.cumulative_returns import cumulative_returns
 from components.daily_returns import daily_returns
 from components.performance_metrics import performance_metrics
 from components.top_20 import render_stock_details, top_20_table
+from components.portfolio_performance import portfolio_performance
 
-try:
-    from components.portfolio_performance import portfolio_performance
-    portfolio_performance_import_error = None
-except Exception as e:
-    portfolio_performance = None
-    portfolio_performance_import_error = e
 
 STOCK_SNAPSHOT_PATH = ROOT_DIR / "Datasets" / "final_files" / "stock_snapshot.parquet"
 SPY_PATH = ROOT_DIR / "Datasets" / "final_files" / "spy_prices_2013-01-01_to_2026-03-31.parquet"
