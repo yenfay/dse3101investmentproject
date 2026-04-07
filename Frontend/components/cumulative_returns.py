@@ -52,7 +52,34 @@ def cumulative_returns(portfolio_df: pd.DataFrame):
 
     chart_option = {
         "title": {"text": "Cumulative Returns", "left": "center"},
-        "tooltip": {"show": False},
+        "tooltip": {
+            "show": True,
+            "trigger": "axis",
+            "axisPointer": {
+                "type": "cross"
+            },
+            "formatter": JsCode(
+                """
+                function (params) {
+                    if (!params || params.length === 0) return '';
+
+                    const date = params[0].axisValue;
+                    let text = (date.endsWith('_zero') ? date.replace('_zero', '') : date) + '<br/>';
+
+                    params.forEach(function(item) {
+                        if (item.seriesName !== 'Cumulative Return') return;
+
+                        let val = item.data;
+                        if (typeof val === 'number') {
+                            text += item.marker + ' Cumulative Return: ' + val.toFixed(2) + '%';
+                        }
+                    });
+
+                    return text;
+                }
+                """
+            )
+        },
         "legend": {"data": ["Cummulative Return"], "top": 40},
         "grid": {"top": 80},
         "toolbox": {
