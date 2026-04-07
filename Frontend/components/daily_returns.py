@@ -2,6 +2,7 @@ import pandas as pd
 from sqlalchemy import values
 import streamlit as st
 from streamlit_echarts import st_echarts, JsCode
+import json
 
 
 def daily_returns(portfolio_df: pd.DataFrame):
@@ -30,21 +31,29 @@ def daily_returns(portfolio_df: pd.DataFrame):
 
     dates = df["date"].dt.strftime("%Y-%m-%d").tolist()
     values = (df["daily_return"] * 100).tolist()
+    if "trade_date" not in df.columns:
+        st.error("portfolio_df must contain 'trade_date'.")
+        return
+
+    trade_dates = pd.to_datetime(df["trade_date"], errors="coerce").dt.strftime("%Y-%m-%d").tolist()
+    show_trade = [d == td for d, td in zip(dates, trade_dates)]
 
     plot_dates = [dates[0]]
     plot_values = [values[0]]
+    plot_show_trade = [show_trade[0]]
 
     for i in range(1, len(values)):
         prev_val = values[i - 1]
         curr_val = values[i]
 
-        # Insert a zero-crossing point if the sign changes
         if prev_val * curr_val < 0:
             plot_dates.append(f"{dates[i]}_zero")
             plot_values.append(0)
+            plot_show_trade.append(False)
 
         plot_dates.append(dates[i])
         plot_values.append(curr_val)
+        plot_show_trade.append(show_trade[i])
 
     positive_values = [max(v, 0) for v in plot_values]
     negative_values = [min(v, 0) for v in plot_values]
@@ -155,11 +164,13 @@ def daily_returns(portfolio_df: pd.DataFrame):
                 "name": "Daily Return",
                 "type": "line",
                 "symbol": "circle",
+                "showAllSymbol": True,
                 "symbolSize": JsCode(
-                    """
-                    function (value, params) {
-                        return params.name.endsWith('_zero') ? 0 : 10;
-                    }
+                    f"""
+                    function (value, params) {{
+                        const showTrade = {json.dumps(plot_show_trade)};
+                        return showTrade[params.dataIndex] ? 10 : 0;
+                    }}
                     """
                 ),
                 "data": plot_values,
