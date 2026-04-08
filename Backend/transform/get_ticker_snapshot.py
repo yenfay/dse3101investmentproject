@@ -5,11 +5,6 @@ import time
 from datetime import datetime
 from config import PRICES_DS_ROOT, DATA_DIR
 
-# --- Load original ticker list ---
-df = pd.read_parquet(PRICES_DS_ROOT/"stock_prices_all.parquet")
-all_tickers = df["ticker"].unique().tolist()
-print(f"Found {len(all_tickers)} unique tickers. Starting fetch...\n")
-
 # --- Field map ---
 INFO_FIELDS = {
     "exchange_country":       "country",
@@ -72,6 +67,11 @@ def sanitise(df: pd.DataFrame) -> pd.DataFrame:
 
 def main():
     """Fetch ticker snapshots and save to parquet."""
+    # --- Load original ticker list ---
+    df = pd.read_parquet(PRICES_DS_ROOT/"stock_prices_all.parquet")
+    all_tickers = df["ticker"].unique().tolist()
+    print(f"Found {len(all_tickers)} unique tickers. Starting fetch...\n")
+
     # --- Fetch loop ---
     records = []
     saved_df = pd.DataFrame(columns=COLUMN_ORDER)  # accumulates all saved batches
