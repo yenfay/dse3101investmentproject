@@ -40,9 +40,13 @@ OPENFIGI_API_KEY=your_openfigi_api_key
 OPENFIGI_URL=https://api.openfigi.com/v3/mapping
 ```
 
-> Ensure your `DEBUG` configuration is set to `false`
+> Ensure your `DEBUG` configuration is set to `false` in .env file:
 ```
 DEBUG=false
+```
+> Or run this in terminal:
+```
+$env:DEBUG="false"
 ```
 
 > **EXPLANATION:**
@@ -54,19 +58,26 @@ DEBUG=false
 ### 4. Set environment
 
 > a. Set up and activate virtual environment:
-> ```bash
 > # Create virtual environment
-> python -m venv venv
+```
+python -m venv venv
+```
 >
 > # Activate it
 > # Windows:
-> venv\Scripts\activate
+```
+venv\Scripts\activate
+```
 > # If you encounter "running scripts is disabled" or > unauthorized access:
 > # Run this in PowerShell, then try again
-> Set-ExecutionPolicy -Scope CurrentUser     -ExecutionPolicy RemoteSigned
+```
+Set-ExecutionPolicy -Scope CurrentUser     -ExecutionPolicy RemoteSigned
+```
+>
 > # Mac/Linux:
-> source venv/bin/activate
-> ```
+```
+source venv/bin/activate
+```
 
 ### 5. Install Dependencies
 
@@ -83,7 +94,6 @@ Run Backend.batch_run_all_backend script to run all the batch_processes required
 **Run:**
 
 ```bash
-$env:DEBUG="false"
 python -m Backend.batch_run_all_backend
 ```
 
