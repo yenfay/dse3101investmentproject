@@ -20,7 +20,7 @@ from config import (
     RUN_META_PATH_SPY
 )
 
-OUTPUT_PATH = FINAL_FILES_FOLDER / "spy_prices.parquet"
+OUTPUT_PATH = FINAL_FILES_FOLDER / "spy_prices_2013-01-01_to_2026-03-31.parquet"
 RUN_META_PATH = RUN_META_PATH_SPY
 
 # ---------------------------
