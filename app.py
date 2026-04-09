@@ -25,8 +25,13 @@ from Frontend.components.portfolio_performance import portfolio_performance
 STOCK_SNAPSHOT_PATH = ROOT_DIR / "Datasets" / "final_files" / "stock_snapshot.parquet"
 SPY_PATH = ROOT_DIR / "Datasets" / "final_files" / "spy_prices_2013-01-01_to_2026-03-31.parquet"
 
-stock_snapshot_df = pd.read_parquet(STOCK_SNAPSHOT_PATH) if STOCK_SNAPSHOT_PATH.exists() else None
-spy_df = pd.read_parquet(SPY_PATH) if SPY_PATH.exists() else None
+@st.cache_data
+def load_data():
+    stock_snapshot_df = pd.read_parquet(STOCK_SNAPSHOT_PATH) if STOCK_SNAPSHOT_PATH.exists() else None
+    spy_df = pd.read_parquet(SPY_PATH) if SPY_PATH.exists() else None
+    return stock_snapshot_df, spy_df
+
+stock_snapshot_df, spy_df = load_data()
 
 # macro page configurations 
 st.set_page_config(page_title="dse3101 project", layout="wide")
@@ -109,14 +114,25 @@ with c6:
 portfolio_df = None
 metrics_df = None
 
+@st.cache_data(show_spinner=False)
+def run_backtest(from_date, to_date, initial_capital, topN, cost_rate):
+    return main(
+        userinput_start_date=from_date,
+        userinput_end_date=to_date,
+        userinput_initial_capital=initial_capital,
+        userinput_topN_stocks=topN,
+        userinput_cost_rate=cost_rate,
+    )
+
 try:
     with st.spinner("Running backtest..."):
-        portfolio_df, metrics_df = main(
-            userinput_start_date=from_date.strftime("%Y-%m-%d"),
-            userinput_end_date=to_date.strftime("%Y-%m-%d"),
-            userinput_initial_capital=float(initial_capital),
-            userinput_topN_stocks=int(topN),
-            userinput_cost_rate=float(cost_rate),)
+        portfolio_df, metrics_df = run_backtest(
+            from_date.strftime("%Y-%m-%d"),
+            to_date.strftime("%Y-%m-%d"),
+            float(initial_capital),
+            int(topN),
+            float(cost_rate),
+        )
 
         if portfolio_df is not None and spy_df is not None:
             portfolio_df = portfolio_df.copy()
